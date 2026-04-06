@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "arynoxtech-world-model"
+version = "1.0.0"
+description = "Advanced World Model for Universal Industrial and Real-World Applications - DreamerV3 with RSSM, Groq LLM Integration, and Enterprise Security"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Aryan Sanjay Chavan", email = "aryaanchavan1@gmail.com"},
+]
+keywords = [
+    "reinforcement-learning", 
+    "world-model", 
+    "dreamer", 
+    "rssm",
+    "model-based-rl",
+    "industrial-ai",
+    "predictive-maintenance",
+    "robotics",
+    "deep-learning",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "torch>=1.10.0",
+    "gymnasium>=0.29.0",
+    "numpy>=1.21.0",
+    "tqdm>=4.62.0",
+    "matplotlib>=3.5.0",
+    "flask>=2.0.0",
+]
+
+[project.optional-dependencies]
+api = ["flask>=2.0.0", "flask-cors>=3.0.0"]
+dev = ["pytest>=7.0.0", "black", "flake8", "mypy"]
+all = [
+    "torch>=1.10.0",
+    "gymnasium>=0.29.0",
+    "numpy>=1.21.0",
+    "tqdm>=4.62.0",
+    "matplotlib>=3.5.0",
+    "flask>=2.0.0",
+    "flask-cors>=3.0.0",
+    "pytest>=7.0.0",
+    "black",
+    "flake8",
+]
+
+[project.scripts]
+world-model-train = "world_model.training.trainer:main"
+world-model-api = "world_model.api:main"
+
+[project.urls]
+Homepage = "https://github.com/aryaanchavan1-commits/world_model"
+Documentation = "https://github.com/aryaanchavan1-commits/world_model#readme"
+Repository = "https://github.com/aryaanchavan1-commits/world_model"
+Issues = "https://github.com/aryaanchavan1-commits/world_model/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["world_model*"]
+exclude = ["tests*", "examples*", "docs*"]
+
+[tool.setuptools.package-data]
+world_model = ["configs/*.json"]

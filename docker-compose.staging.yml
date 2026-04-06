@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: arynoxtech/world-model:staging
+    container_name: arynoxtech-web-staging
+    restart: unless-stopped
+    ports:
+      - "8502:8501"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+      - LOG_LEVEL=DEBUG
+      - DATA_DIR=/app/user_data
+    volumes:
+      - user_data_staging:/app/user_data
+    networks:
+      - arynoxtech-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  user_data_staging:
+    driver: local
+
+networks:
+  arynoxtech-network:
+    driver: bridge
