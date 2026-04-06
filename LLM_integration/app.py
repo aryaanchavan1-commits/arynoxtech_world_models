@@ -346,66 +346,32 @@ st.markdown("""
 
 
 def get_groq_api_key():
-    """Get Groq API key from secrets, session state, or environment."""
-    # First check session state (user-provided via Settings)
-    if 'user_groq_api_key' in st.session_state and st.session_state.user_groq_api_key:
-        return st.session_state.user_groq_api_key
-    
-    # Then check Streamlit secrets
+    """Get Groq API key from Streamlit secrets only."""
+    # Check Streamlit secrets first (for Streamlit Cloud deployment)
     if hasattr(st, 'secrets') and 'groq' in st.secrets:
         return st.secrets['groq']['api_key']
     
-    # Finally check environment variable
+    # Fallback to environment variable (for local development)
     return os.environ.get('GROQ_API_KEY', '')
 
 
 def render_settings_tab():
-    """Render the Settings tab with API key configuration."""
-    st.markdown("### 🔑 API Configuration")
-    
-    # Groq API Key
-    st.markdown("#### Groq API Key")
-    st.markdown("Enter your Groq API key to enable LLM features. You can get one from [console.groq.com](https://console.groq.com/keys).")
-    
-    current_key = st.session_state.get('user_groq_api_key', '')
-    api_key_input = st.text_input(
-        "Groq API Key",
-        value=current_key,
-        type="password",
-        placeholder="gsk_...",
-        help="Your Groq API key for LLM features",
-        key="api_key_input"
-    )
-    
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        if st.button("💾 Save API Key", type="primary", use_container_width=True):
-            if api_key_input:
-                st.session_state.user_groq_api_key = api_key_input
-                st.success("API key saved! Please refresh to apply changes.")
-            else:
-                st.warning("Please enter a valid API key")
-    
-    with col2:
-        if st.button("🗑️ Clear API Key", use_container_width=True):
-            if 'user_groq_api_key' in st.session_state:
-                del st.session_state.user_groq_api_key
-                st.success("API key cleared!")
+    """Render the Settings tab with agent configuration."""
+    st.markdown("### ⚙️ Agent Settings")
     
     # Status indicator
-    st.markdown("---")
     st.markdown("#### 📊 Current Configuration")
     
     api_key_status = get_groq_api_key()
     if api_key_status:
         key_preview = api_key_status[:10] + "..." if len(api_key_status) > 10 else api_key_status
-        st.success(f"✅ API Key configured: `{key_preview}`")
+        st.success(f"✅ Groq API Key configured: `{key_preview}` (from Streamlit secrets)")
     else:
-        st.warning("❌ No API key configured - LLM features will be disabled")
+        st.warning("❌ No API key configured in secrets - LLM features will be disabled")
+        st.info("To add your API key, create a `.streamlit/secrets.toml` file with:\n```\n[groq]\napi_key = \"your-api-key-here\"\n```")
     
-    # Additional settings
     st.markdown("---")
-    st.markdown("#### ⚙️ Agent Settings")
+    st.markdown("#### 🧠 Imagination Settings")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -413,16 +379,16 @@ def render_settings_tab():
             "Imagination Horizon",
             min_value=1,
             max_value=20,
-            value=8,
-            help="How many steps ahead the agent imagines"
+            value=5,
+            help="How many steps ahead the agent imagines (lower = faster)"
         )
     with col2:
         num_scenarios = st.number_input(
             "Number of Scenarios",
             min_value=1,
             max_value=10,
-            value=5,
-            help="How many response strategies to evaluate"
+            value=3,
+            help="How many response strategies to evaluate (lower = faster)"
         )
     
     # Save settings
@@ -441,6 +407,8 @@ def render_settings_tab():
     - **Generates** natural language responses
     
     Powered by `arynoxtech-world-model` PyPI package.
+    
+    **Note:** The Groq API key is loaded from Streamlit secrets (`.streamlit/secrets.toml`) for security.
     """)
 
 
@@ -517,53 +485,115 @@ def render_chat_message(role, message, thinking_data=None, attachments=None):
 
 
 def render_thinking_data(thinking_data):
-    """Render the agent's thinking process with premium UI."""
-    col1, col2 = st.columns([1, 1.5])
+    """Render the agent's thinking process with visual scenario cards."""
+    st.markdown("### 🎯 Selected Strategy")
     
-    with col1:
-        st.markdown('<div class="strategy-card">', unsafe_allow_html=True)
-        st.markdown("### 🎯 Selected Strategy")
-        st.info(thinking_data.get('selected_strategy', {}).get('description', 'N/A'))
-        
-        # Metrics
-        m1, m2 = st.columns(2)
-        m1.metric(
-            label="Predicted Reward",
-            value=f"{thinking_data.get('selected_strategy', {}).get('predicted_reward', 0):.2f}",
-        )
-        m2.metric(
-            label="Confidence",
-            value=f"{1 - thinking_data.get('selected_strategy', {}).get('uncertainty', 0):.1%}",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
+    selected = thinking_data.get('selected_strategy', {})
+    st.markdown(f'''
+    <div class="strategy-card" style="border-left-color: #4CAF50; background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="font-size: 2rem;">🏆</div>
+            <div>
+                <strong style="color: #4CAF50; font-size: 1.1rem;">{selected.get('description', 'N/A')}</strong>
+                <div style="margin-top: 0.5rem; display: flex; gap: 1rem;">
+                    <span style="color: #666;">📈 Reward: {selected.get('predicted_reward', 0):.2f}</span>
+                    <span style="color: #666;">🎯 Confidence: {1 - selected.get('uncertainty', 0):.1%}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
     
-    with col2:
-        st.markdown("### 🔮 Scenarios Evaluated")
+    # Show all imagined scenarios as visual cards
+    st.markdown("### 🔮 Imagined Scenarios")
+    
+    scenarios = thinking_data.get('scenarios', [])
+    if scenarios:
+        # Create visual cards for each scenario
+        cols = st.columns(min(len(scenarios), 3))
         
-        scenarios = thinking_data.get('scenarios', [])
-        if scenarios:
-            df = pd.DataFrame(scenarios)
-            df['strategy'] = [f"Option {i+1}" for i in range(len(df))]
-            
-            fig = px.scatter(
-                df, 
-                x='predicted_reward', 
-                y='uncertainty',
-                text='strategy',
-                size=[15 if i == thinking_data.get('selected_strategy', {}).get('strategy') else 8 
-                      for i in range(len(df))],
-                color='predicted_reward',
-                color_continuous_scale='RdYlGn',
-                hover_data=['description'],
-            )
-            fig.update_layout(
-                title="Strategy Evaluation Space",
-                height=280,
-                margin=dict(l=20, r=20, t=40, b=20),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-            )
-            st.plotly_chart(fig, use_container_width=True)
+        for i, scenario in enumerate(scenarios):
+            with cols[i % 3]:
+                # Determine if this was the selected scenario
+                is_selected = (i == selected.get('strategy', -1))
+                
+                # Generate a visual representation using emoji and colors
+                reward_level = scenario.get('predicted_reward', 0)
+                uncertainty_level = scenario.get('uncertainty', 0)
+                
+                # Color based on reward
+                if reward_level > 5:
+                    color = "#4CAF50"  # Green
+                    emoji = "🌟"
+                elif reward_level > 2:
+                    color = "#FF9800"  # Orange
+                    emoji = "💡"
+                else:
+                    color = "#F44336"  # Red
+                    emoji = "🤔"
+                
+                # Border style based on selection
+                border_style = f"border: 3px solid {color};" if is_selected else f"border: 1px solid {color};"
+                opacity = "1" if is_selected else "0.7"
+                
+                st.markdown(f'''
+                <div style="{border_style} border-radius: 12px; padding: 1rem; margin: 0.5rem 0; background: white; opacity: {opacity};">
+                    <div style="text-align: center; font-size: 2rem; margin-bottom: 0.5rem;">{emoji}</div>
+                    <div style="font-weight: bold; color: {color}; margin-bottom: 0.5rem;">Scenario {i+1}</div>
+                    <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.5rem;">
+                        {scenario.get('description', '')[:100]}...
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
+                        <span>📈 {scenario.get('predicted_reward', 0):.1f}</span>
+                        <span>🎯 {(1 - scenario.get('uncertainty', 0)) * 100:.0f}%</span>
+                    </div>
+                    {'<div style="text-align: center; margin-top: 0.5rem; color: #4CAF50; font-weight: bold;">✅ SELECTED</div>' if is_selected else ''}
+                </div>
+                ''', unsafe_allow_html=True)
+        
+        # Show imagination flow as a timeline
+        st.markdown("### 🧠 Imagination Flow")
+        
+        # Create a visual timeline showing the imagination process
+        timeline_html = '''
+        <div style="margin: 1rem 0;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                <div style="font-weight: bold; color: #667eea;">🧠 User Input</div>
+                <div style="flex: 1; height: 2px; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); margin: 0 1rem;"></div>
+                <div style="font-weight: bold; color: #764ba2;">🔮 Imagination</div>
+                <div style="flex: 1; height: 2px; background: linear-gradient(90deg, #764ba2 0%, #4CAF50 100%); margin: 0 1rem;"></div>
+                <div style="font-weight: bold; color: #4CAF50;">💬 Response</div>
+            </div>
+        </div>
+        '''
+        st.markdown(timeline_html, unsafe_allow_html=True)
+        
+        # Show scenario comparison table
+        st.markdown("### 📊 Scenario Comparison")
+        
+        comparison_data = []
+        for i, scenario in enumerate(scenarios):
+            comparison_data.append({
+                'Scenario': f"Option {i+1}",
+                'Strategy': scenario.get('description', '')[:50] + '...',
+                'Predicted Reward': f"{scenario.get('predicted_reward', 0):.2f}",
+                'Confidence': f"{(1 - scenario.get('uncertainty', 0)) * 100:.0f}%",
+                'Selected': '✅' if i == selected.get('strategy', -1) else '❌'
+            })
+        
+        comparison_df = pd.DataFrame(comparison_data)
+        st.dataframe(
+            comparison_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Scenario": st.column_config.TextColumn(width="small"),
+                "Strategy": st.column_config.TextColumn(width="medium"),
+                "Predicted Reward": st.column_config.NumberColumn(format="%.2f"),
+                "Confidence": st.column_config.TextColumn(width="small"),
+                "Selected": st.column_config.TextColumn(width="small")
+            }
+        )
 
 
 def render_memory_visualization(agent):
@@ -824,7 +854,7 @@ def render_main_app():
                         </div>''',
                         unsafe_allow_html=True
                     )
-                    if st.button("Load", key=f"load_{conv['id']}", use_container_width=True, size="small"):
+                    if st.button("Load", key=f"load_{conv['id']}", use_container_width=True):
                         # Save current first
                         if st.session_state.messages:
                             save_current_conversation()

@@ -66,6 +66,12 @@ class ImaginationScenario:
     uncertainty: float
     actions: List[Any]
     description: str
+    visualization_url: str = ""  # URL for visual representation
+    scenario_images: List[str] = None  # List of image URLs for each imagination step
+    
+    def __post_init__(self):
+        if self.scenario_images is None:
+            self.scenario_images = []
 
 
 @dataclass
@@ -103,8 +109,8 @@ class CognitiveAgent:
         groq_api_key: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None,
         device: str = 'auto',
-        imagination_horizon: int = 10,
-        num_scenarios: int = 5,
+        imagination_horizon: int = 5,  # Reduced for faster response
+        num_scenarios: int = 3,  # Reduced for faster response
     ):
         """
         Initialize the cognitive agent.
@@ -114,8 +120,8 @@ class CognitiveAgent:
             groq_api_key: Groq API key for LLM
             config: Optional configuration overrides
             device: Device to use ('cpu', 'cuda', or 'auto')
-            imagination_horizon: Steps to imagine into the future
-            num_scenarios: Number of scenarios to imagine per response
+            imagination_horizon: Steps to imagine into the future (default: 5 for speed)
+            num_scenarios: Number of scenarios to imagine per response (default: 3 for speed)
         """
         self.imagination_horizon = imagination_horizon
         self.num_scenarios = num_scenarios
