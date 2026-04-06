@@ -18,33 +18,36 @@ import os
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
-# Import World Model components
-import sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from text_encoder import SimpleTextEncoder, encode_text_tensor
+# Import local text encoder from the same directory
+from .text_encoder import SimpleTextEncoder, encode_text_tensor
 
-# Try to import the world model Agent
-try:
-    # First try direct import from src
-    from src.world_model.agent import Agent
-except ImportError:
+# Import the world model Agent from the installed PyPI package
+# The package should be installed via: pip install arynoxtech-world-model
+def _import_world_model_agent():
+    """Try to import Agent from world_model, with fallback to install if needed."""
     try:
-        # Try importing as installed package
         from world_model.agent import Agent
+        return Agent
     except ImportError:
+        # Try to install the package dynamically
+        import subprocess
+        import sys
+        
+        print("Attempting to install arynoxtech-world-model package...")
         try:
-            # Try installing the package in development mode
-            import subprocess
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", ".", "-q"])
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "arynoxtech-world-model", "-q"])
+            # Clear any cached import failures
+            if 'world_model' in sys.modules:
+                del sys.modules['world_model']
             from world_model.agent import Agent
-        except:
-            # If all else fails, add src to path and try again
-            src_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'src')
-            sys.path.insert(0, src_path)
-            try:
-                from world_model.agent import Agent
-            except:
-                raise ImportError("Could not import world_model.Agent. Make sure the package is installed correctly.")
+            return Agent
+        except Exception as install_error:
+            raise ImportError(
+                f"Could not import world_model.agent.Agent: {install_error}. "
+                "Please ensure the arynoxtech-world-model package is installed: pip install arynoxtech-world-model"
+            )
+
+Agent = _import_world_model_agent()
 
 # Try to import Groq, handle if not installed
 try:

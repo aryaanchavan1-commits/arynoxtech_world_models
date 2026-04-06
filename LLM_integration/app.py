@@ -346,10 +346,102 @@ st.markdown("""
 
 
 def get_groq_api_key():
-    """Get Groq API key from secrets (no UI input)."""
+    """Get Groq API key from secrets, session state, or environment."""
+    # First check session state (user-provided via Settings)
+    if 'user_groq_api_key' in st.session_state and st.session_state.user_groq_api_key:
+        return st.session_state.user_groq_api_key
+    
+    # Then check Streamlit secrets
     if hasattr(st, 'secrets') and 'groq' in st.secrets:
         return st.secrets['groq']['api_key']
+    
+    # Finally check environment variable
     return os.environ.get('GROQ_API_KEY', '')
+
+
+def render_settings_tab():
+    """Render the Settings tab with API key configuration."""
+    st.markdown("### 🔑 API Configuration")
+    
+    # Groq API Key
+    st.markdown("#### Groq API Key")
+    st.markdown("Enter your Groq API key to enable LLM features. You can get one from [console.groq.com](https://console.groq.com/keys).")
+    
+    current_key = st.session_state.get('user_groq_api_key', '')
+    api_key_input = st.text_input(
+        "Groq API Key",
+        value=current_key,
+        type="password",
+        placeholder="gsk_...",
+        help="Your Groq API key for LLM features",
+        key="api_key_input"
+    )
+    
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if st.button("💾 Save API Key", type="primary", use_container_width=True):
+            if api_key_input:
+                st.session_state.user_groq_api_key = api_key_input
+                st.success("API key saved! Please refresh to apply changes.")
+            else:
+                st.warning("Please enter a valid API key")
+    
+    with col2:
+        if st.button("🗑️ Clear API Key", use_container_width=True):
+            if 'user_groq_api_key' in st.session_state:
+                del st.session_state.user_groq_api_key
+                st.success("API key cleared!")
+    
+    # Status indicator
+    st.markdown("---")
+    st.markdown("#### 📊 Current Configuration")
+    
+    api_key_status = get_groq_api_key()
+    if api_key_status:
+        key_preview = api_key_status[:10] + "..." if len(api_key_status) > 10 else api_key_status
+        st.success(f"✅ API Key configured: `{key_preview}`")
+    else:
+        st.warning("❌ No API key configured - LLM features will be disabled")
+    
+    # Additional settings
+    st.markdown("---")
+    st.markdown("#### ⚙️ Agent Settings")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        imagination_horizon = st.number_input(
+            "Imagination Horizon",
+            min_value=1,
+            max_value=20,
+            value=8,
+            help="How many steps ahead the agent imagines"
+        )
+    with col2:
+        num_scenarios = st.number_input(
+            "Number of Scenarios",
+            min_value=1,
+            max_value=10,
+            value=5,
+            help="How many response strategies to evaluate"
+        )
+    
+    # Save settings
+    st.session_state.agent_settings = {
+        'imagination_horizon': imagination_horizon,
+        'num_scenarios': num_scenarios
+    }
+    
+    st.markdown("---")
+    st.markdown("#### ℹ️ About")
+    st.info("""
+    **Arynoxtech Cognitive Agent** uses a World Model architecture (RSSM) combined with Groq's LLM to create an AI that:
+    - **Remembers** conversation context
+    - **Imagines** multiple response strategies
+    - **Selects** the best response using Actor-Critic
+    - **Generates** natural language responses
+    
+    Powered by `arynoxtech-world-model` PyPI package.
+    """)
 
 
 def init_agent():
@@ -776,7 +868,7 @@ def render_main_app():
             st.success(f"📎 {len(uploaded_files)} file(s) attached")
     
     # Main content with tabs
-    tab1, tab2 = st.tabs(["💬 Chat", "🧠 Agent Mind"])
+    tab1, tab2, tab3 = st.tabs(["💬 Chat", "🧠 Agent Mind", "⚙️ Settings"])
     
     with tab1:
         # Chat container
@@ -869,6 +961,10 @@ def render_main_app():
         st.markdown("---")
         st.markdown("### 🧠 Memory State Evolution")
         st.info("The agent's memory (h, z states) evolves with each conversation turn, maintaining context and understanding.")
+    
+    with tab3:
+        # Settings tab
+        render_settings_tab()
     
     # Footer
     st.markdown(
